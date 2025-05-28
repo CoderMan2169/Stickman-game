@@ -1,0 +1,111 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class GameManager : MonoBehaviour
+{
+    [Header("Game Components")]
+    [SerializeField] private Transform finishLine;
+    [SerializeField] private CameraFollow cameraFollow; // optional
+    [SerializeField] private GameObject player;
+    [SerializeField] private GameObject particleEffect;
+    [SerializeField] private float speedOnWin;
+
+    [Header("UI")]
+    [SerializeField] private GameObject pauseMenuUI;
+
+    private Stickman stickman;
+    private Vector3 initPos;
+    private bool won = false;
+    private bool isPaused = false;
+
+    private void Start()
+    {
+        stickman = player.GetComponent<Stickman>();
+        initPos = player.transform.position;
+
+        if (pauseMenuUI != null)
+        {
+            pauseMenuUI.SetActive(false); // hide pause menu at start
+        }
+    }
+
+    private void Update()
+    {
+        HandleInput();
+
+        if (!isPaused)
+        {
+            if (!stickman.getSticked())
+            {
+                if (player.transform.position.x < -5 || player.transform.position.y < -6)
+                {
+                    ResetGame();
+                }
+            }
+
+            if (player.transform.position.x > finishLine.position.x && !won)
+            {
+                won = true;
+                Win();
+            }
+        }
+    }
+
+    private void HandleInput()
+    {
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            TogglePause();
+        }
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            ResetGame();
+        }
+    }
+
+    public void TogglePause()
+    {
+        isPaused = !isPaused;
+
+        if (isPaused)
+        {
+            Time.timeScale = 0f;
+            if (pauseMenuUI != null) pauseMenuUI.SetActive(true);
+        }
+        else
+        {
+            Time.timeScale = 1f;
+            if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
+        }
+    }
+
+    private void ResetGame()
+    {
+        Time.timeScale = 1f;
+        isPaused = false;
+        won = false;
+        stickman.reset(initPos);
+        particleEffect.SetActive(false);
+
+        if (pauseMenuUI != null)
+            pauseMenuUI.SetActive(false);
+    }
+
+    private void Win()
+    {
+        stickman.Win(speedOnWin);
+        particleEffect.SetActive(true);
+        particleEffect.transform.parent = null;
+        cameraFollow?.Win();
+        StartCoroutine(FinishLevel());
+    }
+
+    private IEnumerator FinishLevel()
+    {
+        yield return new WaitForSecondsRealtime(3);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+}
